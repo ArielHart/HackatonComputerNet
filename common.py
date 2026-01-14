@@ -27,19 +27,39 @@ UDP_OFFER_PORT_DEFAULT = 13122
 NAME_LEN = 32
 
 def now_ts() -> str:
-    return time.strftime("%H:%M:%S", time.localtime())
+    return time.strftime("%H:%M:%S")
 
 def log(prefix: str, msg: str) -> None:
     print(f"[{now_ts()}] {prefix}: {msg}", flush=True)
 
 def clamp_name(name: str) -> bytes:
-    pass
+    """Encode name to fixed 32 bytes, zero padded (truncate if needed)."""
+    raw = name.encode("utf-8", errors="ignore")
+    if len(raw) > NAME_LEN:
+        raw = raw[:NAME_LEN]
+    return raw.ljust(NAME_LEN, b"\x00")
 
 def unpad_name(raw32: bytes) -> str:
-    pass
+    return raw32.split(b"\x00", 1)[0].decode("utf-8", errors="replace")
 
 def recv_exact(sock: socket.socket, n: int) -> bytes:
-    pass
+    """Receive exactly n bytes or raise ConnectionError."""
+    buf = bytearray()
+    while len(buf) < n:
+        chunk = sock.recv(n - len(buf))
+        if not chunk:
+            raise ConnectionError("socket closed")
+        buf.extend(chunk)
+    return bytes(buf)
 
 def safe_close(sock: Optional[socket.socket]) -> None:
-    pass
+    if not sock:
+        return
+    try:
+        sock.shutdown(socket.SHUT_RDWR)
+    except Exception:
+        pass
+    try:
+        sock.close()
+    except Exception:
+        pass
